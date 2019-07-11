@@ -1,12 +1,17 @@
 package what.is.jsonpractice;
 
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.GridView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -31,12 +36,15 @@ import butterknife.OnClick;
 import butterknife.OnItemClick;
 import butterknife.Unbinder;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnShibeClicked {
     private static final String TAG = "MainActivity";
 
+    ShibeAdapter.OnShibeClicked listener;
     ShibeAdapter shibeAdapter;
     RecyclerView recyclerView;
-
+    ImageExpand imageExpand;
+    FrameLayout frameImageExpand;
+    FragmentManager manager;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -50,6 +58,14 @@ public class MainActivity extends AppCompatActivity {
         new AsyncTaskURL().execute("20");
     }
 
+//    @Override
+//    public void onBackPressed() {
+//        if(frameImageExpand.getVisibility(View.VISIBLE)==true){
+//            manager.popBackStack();
+//        }
+//        super.onBackPressed();
+//    }
+
     @OnClick(R.id.btn_grid) void grid(){
        recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
     }
@@ -58,9 +74,23 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
     }
 
-    @OnItemClick(R.id.iv_photo) void expandPhoto(){
-        ;
+    @Override
+    public void shibeClicked(String url) {
+        Toast.makeText(this, url, Toast.LENGTH_SHORT).show();
+
+        imageExpand = new ImageExpand();
+        Bundle urlBundle = new Bundle();
+        urlBundle.putString("URL", url);
+        imageExpand.setArguments(urlBundle);
+
+        getSupportFragmentManager()
+                .beginTransaction()
+                .add(R.id.frame_expand, imageExpand, url).commit();
+        frameImageExpand = findViewById(R.id.frame_expand);
+        frameImageExpand.setVisibility(View.VISIBLE);
+
     }
+
 
     class AsyncTaskURL extends AsyncTask<String, Void, List<String>> {
 
@@ -127,9 +157,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(List<String> strings) {
             super.onPostExecute(strings);
-
-            shibeAdapter = new ShibeAdapter(strings);
+            shibeAdapter = new ShibeAdapter(strings, MainActivity.this);
             recyclerView.setAdapter(shibeAdapter);
         }
     }
 }
+
