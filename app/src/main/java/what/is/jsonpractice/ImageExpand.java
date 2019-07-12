@@ -11,11 +11,14 @@ import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import com.bumptech.glide.Glide;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
+import butterknife.OnItemClick;
 import butterknife.Unbinder;
 
 public class ImageExpand extends Fragment {
@@ -48,6 +51,11 @@ public class ImageExpand extends Fragment {
         unbinder = ButterKnife.bind(this, v);
         Glide.with(this).load(url).into(urlExpandImage);
         return v;
+    }
+
+    @OnClick
+    public void dismiss() {
+        urlExpandImage.setVisibility(View.GONE);
     }
 
     @Override
