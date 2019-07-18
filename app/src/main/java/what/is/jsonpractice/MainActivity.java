@@ -1,12 +1,10 @@
 package what.is.jsonpractice;
 
-import android.content.DialogInterface;
-import android.os.AsyncTask;
+import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.Handler;
 import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.GridView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -16,64 +14,52 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonArrayRequest;
-import com.android.volley.toolbox.Volley;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Array;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import butterknife.OnItemClick;
-import butterknife.Unbinder;
-import retrofit2.Call;
-import retrofit2.Callback;
-import what.is.jsonpractice.retrofit.RestrofitClientInstance;
-import what.is.jsonpractice.retrofit.ShibeService;
+import what.is.jsonpractice.sync.IntentReceiver;
+import what.is.jsonpractice.sync.NotificationUtil;
+import what.is.jsonpractice.sync.ShibeIntentService;
 
-public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnShibeClicked {
+public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnShibeClicked, IntentReceiver.Receiver {
     private static final String TAG = "MainActivity";
 
-    ShibeAdapter.OnShibeClicked listener;
+    //    ShibeAdapter.OnShibeClicked listener;
+    IntentReceiver mReceiver;
     ShibeAdapter shibeAdapter;
     RecyclerView recyclerView;
     ImageExpand imageExpand;
     FrameLayout frameImageExpand;
     FragmentManager manager;
+    ShibeIntentService shibeIntentService;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
         ButterKnife.bind(this);
+        mReceiver = new IntentReceiver(new Handler());
+        mReceiver.setReceiver(this);
         recyclerView = findViewById(R.id.rv_list);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
         recyclerView.setHasFixedSize(true);
 
-        retrofitRequest(22);
-
-//        volleyRequest(20);
-
-//        new AsyncTaskURL().execute("20");
+        Intent intent = new Intent(this, ShibeIntentService.class);
+        String count = "20";
+        intent.putExtra("receiver", mReceiver);
+        intent.putExtra("urlSent", count);
+        startService(intent);
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mReceiver.setReceiver(null);
+    }
+
 
     @OnClick(R.id.btn_grid)
     void grid() {
@@ -144,34 +130,34 @@ public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnSh
 //
 //    }
 
-    public void retrofitRequest(int count) {
-
-        //1: declare ShibeService and init it using RetrofitClientInstance
-        ShibeService shibeService = RestrofitClientInstance.getRetrofit().create(ShibeService.class);
-
-        //2: declare ShibeService Return type and init it using the ShibeService from step 1
-        Call<List<String>> shibeCall = shibeService.loadShibes(count);
-
-        //3: use the shibeCall from step 2 and call the .enqueue method
-        shibeCall.enqueue(new Callback<List<String>>() {
-            @Override
-            public void onResponse(Call<List<String>> call, retrofit2.Response<List<String>> response) {
-
-                if (response.isSuccessful()) {
-                    Log.d(TAG, "onResponse: Success");
-                    loadRecyclerView(response.body());
-                } else {
-                    Log.d(TAG, "onResponse: Failure");
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<List<String>> call, Throwable t) {
-                Log.d(TAG, "onFailure: " + t.getLocalizedMessage());
-            }
-        });
-    }
+//    public void retrofitRequest(int count) {
+//
+//        //1: declare ShibeService and init it using RetrofitClientInstance
+//        ShibeService shibeService = RestrofitClientInstance.getRetrofit().create(ShibeService.class);
+//
+//        //2: declare ShibeService Return type and init it using the ShibeService from step 1
+//        Call<List<String>> shibeCall = shibeService.loadShibes(count);
+//
+//        //3: use the shibeCall from step 2 and call the .enqueue method
+//        shibeCall.enqueue(new Callback<List<String>>() {
+//            @Override
+//            public void onResponse(Call<List<String>> call, retrofit2.Response<List<String>> response) {
+//
+//                if (response.isSuccessful()) {
+//                    Log.d(TAG, "onResponse: Success");
+//                    loadRecyclerView(response.body());
+//                } else {
+//                    Log.d(TAG, "onResponse: Failure");
+//                }
+//
+//            }
+//
+//            @Override
+//            public void onFailure(Call<List<String>> call, Throwable t) {
+//                Log.d(TAG, "onFailure: " + t.getLocalizedMessage());
+//            }
+//        });
+//    }
 
     private void loadRecyclerView(List<String> strings) {
         shibeAdapter = new ShibeAdapter(strings, MainActivity.this);
@@ -256,5 +242,18 @@ public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnSh
             getSupportFragmentManager().popBackStack();
         }
     }
+
+    @Override
+    public void onReceiveResult(int resultCode, Bundle resultData) {
+        switch (resultCode) {
+            case 1337:
+                String[] urlResults = resultData.getStringArray("queryResults");
+                List<String> urlList = Arrays.asList(urlResults);
+                loadRecyclerView(urlList);
+                NotificationUtil.notifyUserLoaded(this);
+                break;
+        }
+    }
 }
+
 
