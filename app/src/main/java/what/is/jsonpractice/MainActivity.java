@@ -3,6 +3,7 @@ package what.is.jsonpractice;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -14,16 +15,27 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import what.is.jsonpractice.pojospace.ImageFilesItem;
+import what.is.jsonpractice.pojospace.SpaceResponse;
+import what.is.jsonpractice.retrofit.RestrofitClientInstance;
+import what.is.jsonpractice.retrofit.ShibeService;
+import what.is.jsonpractice.retrospace.RetrofitSpaceClient;
+import what.is.jsonpractice.retrospace.SpaceService;
 import what.is.jsonpractice.sync.IntentReceiver;
 import what.is.jsonpractice.sync.NotificationUtil;
 import what.is.jsonpractice.sync.ShibeIntentService;
 
-public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnShibeClicked, IntentReceiver.Receiver {
+public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnShibeClicked /*,IntentReceiver.Receiver*/ {
     private static final String TAG = "MainActivity";
 
     //    ShibeAdapter.OnShibeClicked listener;
@@ -41,24 +53,27 @@ public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnSh
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
         ButterKnife.bind(this);
-        mReceiver = new IntentReceiver(new Handler());
-        mReceiver.setReceiver(this);
         recyclerView = findViewById(R.id.rv_list);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
         recyclerView.setHasFixedSize(true);
 
-        Intent intent = new Intent(this, ShibeIntentService.class);
-        String count = "20";
-        intent.putExtra("receiver", mReceiver);
-        intent.putExtra("urlSent", count);
-        startService(intent);
-    }
+        retrofitRequest(10);
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mReceiver.setReceiver(null);
+
+//        mReceiver = new IntentReceiver(new Handler());
+//        mReceiver.setReceiver(this);
+//        Intent intent = new Intent(this, ShibeIntentService.class);
+//        String count = "20";
+//        intent.putExtra("receiver", mReceiver);
+//        intent.putExtra("urlSent", count);
+//        startService(intent);
     }
+//
+//    @Override
+//    protected void onPause() {
+//        super.onPause();
+//        mReceiver.setReceiver(null);
+//    }
 
 
     @OnClick(R.id.btn_grid)
@@ -130,34 +145,67 @@ public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnSh
 //
 //    }
 
+
 //    public void retrofitRequest(int count) {
 //
+//        SpaceResponse spaceResponse= null;
+//        ImageFilesItem imageFilesItem = null;
 //        //1: declare ShibeService and init it using RetrofitClientInstance
-//        ShibeService shibeService = RestrofitClientInstance.getRetrofit().create(ShibeService.class);
+//        SpaceService spaceService = RetrofitSpaceClient.getRetrofitSpace().create(SpaceService.class);
 //
 //        //2: declare ShibeService Return type and init it using the ShibeService from step 1
-//        Call<List<String>> shibeCall = shibeService.loadShibes(count);
+//        Call<ArrayList<Objects>> spaceCall = spaceService.loadSpace();
 //
 //        //3: use the shibeCall from step 2 and call the .enqueue method
-//        shibeCall.enqueue(new Callback<List<String>>() {
+//        spaceCall.enqueue(new Callback<ArrayList<Objects>>() {
 //            @Override
-//            public void onResponse(Call<List<String>> call, retrofit2.Response<List<String>> response) {
+//            public void onResponse(Call<ArrayList<Objects>> call, Response<ArrayList<Objects>> response) {
 //
-//                if (response.isSuccessful()) {
-//                    Log.d(TAG, "onResponse: Success");
+//                if (response.isSuccessful()){
+//                    Log.d(TAG, "onResponse: SpaceQuery Success");
+//                    for(int i = 0; i < response.body().size();i++) {
+//                        spaceResponse =
+//                                List < String > urls = response
+//                    }
 //                    loadRecyclerView(response.body());
-//                } else {
-//                    Log.d(TAG, "onResponse: Failure");
 //                }
-//
 //            }
 //
 //            @Override
-//            public void onFailure(Call<List<String>> call, Throwable t) {
-//                Log.d(TAG, "onFailure: " + t.getLocalizedMessage());
+//            public void onFailure(Call<ArrayList<Objects>> call, Throwable t) {
+//
 //            }
-//        });
+//        }
 //    }
+
+    public void retrofitRequest(int count) {
+
+        //1: declare ShibeService and init it using RetrofitClientInstance
+        ShibeService shibeService = RestrofitClientInstance.getRetrofit().create(ShibeService.class);
+
+        //2: declare ShibeService Return type and init it using the ShibeService from step 1
+        Call<List<String>> shibeCall = shibeService.loadShibes(count);
+
+        //3: use the shibeCall from step 2 and call the .enqueue method
+        shibeCall.enqueue(new Callback<List<String>>() {
+            @Override
+            public void onResponse(Call<List<String>> call, retrofit2.Response<List<String>> response) {
+
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "onResponse: Success");
+                    loadRecyclerView(response.body());
+                } else {
+                    Log.d(TAG, "onResponse: Failure");
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<List<String>> call, Throwable t) {
+                Log.d(TAG, "onFailure: " + t.getLocalizedMessage());
+            }
+        });
+    }
 
     private void loadRecyclerView(List<String> strings) {
         shibeAdapter = new ShibeAdapter(strings, MainActivity.this);
@@ -243,17 +291,17 @@ public class MainActivity extends AppCompatActivity implements ShibeAdapter.OnSh
         }
     }
 
-    @Override
-    public void onReceiveResult(int resultCode, Bundle resultData) {
-        switch (resultCode) {
-            case 1337:
-                String[] urlResults = resultData.getStringArray("queryResults");
-                List<String> urlList = Arrays.asList(urlResults);
-                loadRecyclerView(urlList);
-                NotificationUtil.notifyUserLoaded(this);
-                break;
-        }
-    }
+//    @Override
+//    public void onReceiveResult(int resultCode, Bundle resultData) {
+//        switch (resultCode) {
+//            case 1337:
+//                String[] urlResults = resultData.getStringArray("queryResults");
+//                List<String> urlList = Arrays.asList(urlResults);
+//                loadRecyclerView(urlList);
+//                NotificationUtil.notifyUserLoaded(this);
+//                break;
+//        }
+//    }
 }
 
 
